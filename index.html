@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BUFS 글로벌자유전공학부 신입생 학습성과 분석 대시보드</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', 'Malgun Gothic', sans-serif; background: #0f172a; color: #e2e8f0; }
+.header { background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #1e3a5f 100%); padding: 28px 40px; text-align: center; border-bottom: 3px solid #3b82f6; }
+.header h1 { font-size: 1.7rem; font-weight: 700; color: #fff; }
+.header p { font-size: 0.9rem; color: #94a3b8; margin-top: 6px; }
+.nav { display: flex; justify-content: center; gap: 8px; padding: 16px 20px; background: #1e293b; flex-wrap: wrap; border-bottom: 1px solid #334155; }
+.nav button { padding: 8px 20px; border: 1px solid #475569; border-radius: 8px; background: transparent; color: #94a3b8; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+.nav button.active, .nav button:hover { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+.tab-content { display: none; padding: 24px; max-width: 1400px; margin: 0 auto; }
+.tab-content.active { display: block; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(580px, 1fr)); gap: 20px; margin-bottom: 20px; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; margin-bottom: 20px; }
+.card { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; }
+.card h3 { font-size: 1rem; color: #60a5fa; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #334155; }
+.card-full { grid-column: 1 / -1; }
+.chart-container { position: relative; height: 320px; }
+.chart-container.tall { height: 400px; }
+
+/* KPI Cards */
+.kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.kpi { background: #1e293b; border-radius: 12px; padding: 20px; border: 1px solid #334155; text-align: center; }
+.kpi .value { font-size: 2rem; font-weight: 700; color: #60a5fa; }
+.kpi .label { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+.kpi .change { font-size: 0.75rem; margin-top: 6px; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+.kpi .change.up { background: #14532d; color: #4ade80; }
+.kpi .change.down { background: #7f1d1d; color: #f87171; }
+.kpi .change.neutral { background: #1e3a5f; color: #60a5fa; }
+
+/* Table */
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th, td { padding: 8px 10px; text-align: center; border-bottom: 1px solid #334155; }
+th { background: #0f172a; color: #60a5fa; font-weight: 600; position: sticky; top: 0; }
+tr:hover { background: #334155; }
+.table-scroll { max-height: 400px; overflow-y: auto; }
+
+/* Insight box */
+.insight { background: #172554; border-left: 4px solid #3b82f6; border-radius: 0 8px 8px 0; padding: 14px 18px; margin-bottom: 16px; font-size: 0.85rem; line-height: 1.6; }
+.insight strong { color: #60a5fa; }
+.insight-warn { border-left-color: #f59e0b; background: #451a03; }
+.insight-warn strong { color: #fbbf24; }
+.insight-danger { border-left-color: #ef4444; background: #450a0a; }
+.insight-danger strong { color: #f87171; }
+.insight-good { border-left-color: #22c55e; background: #052e16; }
+.insight-good strong { color: #4ade80; }
+
+/* Badges */
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 600; }
+.badge-blue { background: #1e3a5f; color: #60a5fa; }
+.badge-red { background: #7f1d1d; color: #f87171; }
+.badge-green { background: #14532d; color: #4ade80; }
+.badge-yellow { background: #713f12; color: #fbbf24; }
+
+/* Section title */
+.section-title { font-size: 1.1rem; color: #e2e8f0; margin: 24px 0 16px; padding-left: 12px; border-left: 4px solid #3b82f6; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .header h1 { font-size: 1.3rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>BUFS 글로벌자유전공학부 신입생 학습성과 분석 대시보드</h1>
+  <p>부산외국어대학교 | 2024-2025학번 데이터 기반 분석 | 대학혁신지원사업</p>
+</div>
+
+<div class="nav">
+  <button class="active" onclick="showTab('overview')">종합 개요</button>
+  <button onclick="showTab('demographics')">인구통계</button>
+  <button onclick="showTab('academic')">학업성과</button>
+  <button onclick="showTab('factors')">영향요인</button>
+  <button onclick="showTab('leave')">휴학 분석</button>
+  <button onclick="showTab('dropout')">중도탈락 분석</button>
+  <button onclick="showTab('retention')">재학유지율</button>
+  <button onclick="showTab('courses')">교과목 분석</button>
+</div>
+
+<!-- TAB 1: 종합 개요 -->
+<div id="overview" class="tab-content active">
+  <div class="kpi-row">
+    <div class="kpi">
+      <div class="value">2,561</div>
+      <div class="label">분석 대상 (24+25학번)</div>
+      <div class="change neutral">1,282 + 1,279</div>
+    </div>
+    <div class="kpi">
+      <div class="value">3.67</div>
+      <div class="label">25학번 2학기 평균 GPA</div>
+      <div class="change up">+0.30 vs 24학번</div>
+    </div>
+    <div class="kpi">
+      <div class="value">16.4%</div>
+      <div class="label">휴학률 (24학번 전체)</div>
+      <div class="change down">192명 / 1,282명</div>
+    </div>
+    <div class="kpi">
+      <div class="value">10.7%</div>
+      <div class="label">자퇴율 (24학번 누적)</div>
+      <div class="change down">137명 / 1,282명</div>
+    </div>
+    <div class="kpi">
+      <div class="value">64.1%</div>
+      <div class="label">4년 후 재학유지율 (중립)</div>
+      <div class="change neutral">낙관 71% / 비관 58%</div>
+    </div>
+  </div>
+
+  <div class="insight">
+    <strong>핵심 발견:</strong> 결석이 성적·휴학·자퇴의 가장 강력한 예측 변수입니다. 결석 10회 이상 학생의 GPA는 0.99점, 자퇴율은 17.5%에 달합니다. 비교과 활동 6회 이상 참여 시 자퇴율 0.0%로, 소속감이 재학 유지의 핵심입니다.
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>학업성과 핵심 지표 비교</h3>
+      <div class="chart-container"><canvas id="overviewGPA"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>위험 요인별 자퇴율</h3>
+      <div class="chart-container"><canvas id="overviewRisk"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h3>결석-성적 관계</h3>
+      <div class="chart-container"><canvas id="overviewAbsence"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>비교과 참여-자퇴율</h3>
+      <div class="chart-container"><canvas id="overviewExtracurr"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>상담 시기별 효과</h3>
+      <div class="chart-container"><canvas id="overviewCounseling"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: 인구통계 -->
+<div id="demographics" class="tab-content">
+  <div class="kpi-row">
+    <div class="kpi"><div class="value">56.0%</div><div class="label">25학번 여학생 비율</div><div class="change up">+6.8%p vs 24학번</div></div>
+    <div class="kpi"><div class="value">52.4%</div><div class="label">타 지역 출신 비율</div><div class="change neutral">주거지원 필요</div></div>
+    <div class="kpi"><div class="value">64.2%</div><div class="label">25학번 수시 비중</div><div class="change down">-2.3%p vs 24학번</div></div>
+    <div class="kpi"><div class="value">29.6%</div><div class="label">25학번 정시 비중</div><div class="change up">+5.6%p vs 24학번</div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>성별 분포 변화</h3>
+      <div class="chart-container"><canvas id="demoGender"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>입학전형별 분포</h3>
+      <div class="chart-container"><canvas id="demoAdmission"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>출신 지역별 분포 (상위 10)</h3>
+      <div class="chart-container tall"><canvas id="demoRegion"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>고교유형별 분포</h3>
+      <div class="chart-container"><canvas id="demoHighSchool"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: 학업성과 -->
+<div id="academic" class="tab-content">
+  <div class="insight">
+    <strong>정시 입학자의 강세:</strong> 정시 입학자들은 학기가 지날수록 수시 대비 높은 학업 적응력을 보입니다 (25학번 2학기: 정시 3.73 vs 수시 3.64). 특성화고 출신도 초기 2.76에서 3.49까지 큰 폭으로 상승합니다.
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>입학전형별 GPA 추이 (24학번)</h3>
+      <div class="chart-container"><canvas id="acadAdmGPA24"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>출신지역별 GPA (25학번)</h3>
+      <div class="chart-container"><canvas id="acadRegionGPA"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>고교유형별 GPA 추이 (24학번)</h3>
+      <div class="chart-container"><canvas id="acadHSGPA"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>학점 갭별 평균 GPA (미취득 학점 구간)</h3>
+      <div class="chart-container"><canvas id="acadCreditGap"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card card-full">
+      <h3>입학세부전형별 GPA (25학번 1학기)</h3>
+      <div class="chart-container tall"><canvas id="acadDetailGPA"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: 영향요인 -->
+<div id="factors" class="tab-content">
+  <div class="insight-danger insight">
+    <strong>출석이 절대적 요인:</strong> 모든 회귀분석에서 결석 비중이 성적의 가장 강력한 예측 변수입니다 (상관계수 r = -0.84). 10회 이상 결석 시 GPA 0.99, 학업 포기 수준입니다.
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>결석 횟수별 GPA (25학번 1학기)</h3>
+      <div class="chart-container"><canvas id="factAbsence"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>기숙사 거주 여부별 GPA</h3>
+      <div class="chart-container"><canvas id="factDorm"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>상담 횟수별 GPA</h3>
+      <div class="chart-container"><canvas id="factCounseling"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>회귀분석 변수별 영향력 (상관계수)</h3>
+      <div class="chart-container"><canvas id="factCorrelation"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>최초 상담 시기별 GPA 및 자퇴율 (24학번)</h3>
+      <div class="chart-container"><canvas id="factCounselingTime"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>회귀분석 R² (모형 설명력)</h3>
+      <div class="chart-container"><canvas id="factR2"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 5: 휴학 분석 -->
+<div id="leave" class="tab-content">
+  <div class="kpi-row">
+    <div class="kpi"><div class="value">192</div><div class="label">24학번 휴학생</div><div class="change down">15.0%</div></div>
+    <div class="kpi"><div class="value">228</div><div class="label">25학번 휴학생</div><div class="change down">17.8%</div></div>
+    <div class="kpi"><div class="value">38.6%</div><div class="label">25학번 개인사정 비율</div><div class="change down">+16.2%p</div></div>
+    <div class="kpi"><div class="value">14.5%</div><div class="label">25학번 진로변경 비율</div><div class="change down">+9.3%p</div></div>
+  </div>
+  <div class="insight-warn insight">
+    <strong>경고:</strong> 개인사정 휴학이 22.4%에서 38.6%로 급증하고, 진로변경 사유가 3배 증가했습니다. 이는 잠재적 부적응 및 반수 시도 가능성을 시사합니다. 서울 출신 휴학생 비율도 6.8%→11.0%로 증가하여 수도권 이탈 조짐이 보입니다.
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>휴학 사유별 분포</h3>
+      <div class="chart-container"><canvas id="leaveReason"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>휴학 시기별 분포</h3>
+      <div class="chart-container"><canvas id="leaveTiming"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>로지스틱 분석 - 주요 변수 승산비 (Odds Ratio)</h3>
+      <div class="chart-container"><canvas id="leaveOR"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>성별 휴학률 (군휴학 제외)</h3>
+      <div class="chart-container"><canvas id="leaveGender"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 6: 중도탈락 분석 -->
+<div id="dropout" class="tab-content">
+  <div class="kpi-row">
+    <div class="kpi"><div class="value">137</div><div class="label">24학번 자퇴생</div><div class="change down">10.7%</div></div>
+    <div class="kpi"><div class="value">49</div><div class="label">25학번 자퇴생</div><div class="change neutral">3.8%</div></div>
+    <div class="kpi"><div class="value">38.2%</div><div class="label">타대학 신입학 자퇴</div><div class="change down">최다 사유</div></div>
+    <div class="kpi"><div class="value">91.4%</div><div class="label">1년차 내 자퇴</div><div class="change down">조기 이탈</div></div>
+  </div>
+  <div class="insight-danger insight">
+    <strong>자퇴의 63.5%가 타대학 진학 또는 재수험 준비입니다.</strong> 자퇴생 평균 GPA 2.09점으로 재학생(3.52)과 1.43점 격차. 비교과 0회 참여자의 자퇴율 42.6%, 도서대출 10권 이상 학생의 자퇴율 0.0%입니다.
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>자퇴 사유별 분포</h3>
+      <div class="chart-container"><canvas id="dropReason"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>자퇴 유형 분류</h3>
+      <div class="chart-container"><canvas id="dropType"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>재학생 vs 자퇴생 비교 (Cohen's d 효과크기)</h3>
+      <div class="chart-container"><canvas id="dropCompare"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>비교과 참여 횟수별 자퇴율 (24학번)</h3>
+      <div class="chart-container"><canvas id="dropExtracurr"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>출신지역별 자퇴율</h3>
+      <div class="chart-container"><canvas id="dropRegion"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>자퇴 시점 분포</h3>
+      <div class="chart-container"><canvas id="dropTiming"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 7: 재학유지율 -->
+<div id="retention" class="tab-content">
+  <div class="kpi-row">
+    <div class="kpi"><div class="value">71.0%</div><div class="label">낙관적 시나리오</div><div class="change up">편입방어 성공</div></div>
+    <div class="kpi"><div class="value">64.1%</div><div class="label">중립적 시나리오</div><div class="change neutral">일반적 추세</div></div>
+    <div class="kpi"><div class="value">57.7%</div><div class="label">비관적 시나리오</div><div class="change down">수도권 쏠림 심화</div></div>
+    <div class="kpi"><div class="value">8.5%</div><div class="label">실제 전체 중도탈락률</div><div class="change down">고학년 안정화 안됨</div></div>
+  </div>
+  <div class="insight-warn insight">
+    <strong>2학년 수료 시점 구조적 위기:</strong> 편입 자격 획득 시점에 재학유지율이 급락하는 절벽 현상이 예측됩니다. 신입생(8.7%)과 전체 재학생(8.5%)의 중도탈락률 차이가 거의 없어, 고학년이 되어도 안정화되지 않고 지속적으로 학생이 유출됩니다.
+  </div>
+  <div class="grid-2">
+    <div class="card card-full">
+      <h3>시나리오별 4년 재학유지율 전망 (24학번 기준, 1,282명)</h3>
+      <div class="chart-container tall"><canvas id="retentionChart"></canvas></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <h3>시나리오별 상세 조건</h3>
+    <table>
+      <thead><tr><th>시나리오</th><th>연간 자연감소율</th><th>편입 충격</th><th>4년후 유지율</th><th>잔존 인원(추정)</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-green">낙관적</span></td><td>5%</td><td>5%</td><td>71.0%</td><td>~910명</td></tr>
+        <tr><td><span class="badge badge-blue">중립적</span></td><td>7%</td><td>10%</td><td>64.1%</td><td>~822명</td></tr>
+        <tr><td><span class="badge badge-red">비관적</span></td><td>9%</td><td>15%</td><td>57.7%</td><td>~740명</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB 8: 교과목 분석 -->
+<div id="courses" class="tab-content">
+  <div class="insight-warn insight">
+    <strong>성적 인플레이션 우려:</strong> 세계시민SDGs 평균 GPA가 3.21→3.45→4.04로 3학기 만에 0.83점 급상승. 인공지능의이해와활용도 3.28→4.09로 0.81점 상승하여 비정상적 수준입니다.
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>주요 교과목 GPA 변화 추이</h3>
+      <div class="chart-container"><canvas id="courseGPA"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>분반 간 성적 편차 (범위)</h3>
+      <div class="chart-container"><canvas id="courseVariance"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <h3>P/NP 과목 NP 비율 추이</h3>
+      <div class="chart-container"><canvas id="courseNP"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>P/NP 분반별 NP 비율 편차 (최대-최소)</h3>
+      <div class="chart-container"><canvas id="courseNPvar"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Common chart defaults
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = '#334155';
+Chart.defaults.font.family = "'Segoe UI', 'Malgun Gothic', sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyle = 'circle';
+
+const blue = '#3b82f6', red = '#ef4444', green = '#22c55e', yellow = '#f59e0b', purple = '#a855f7', cyan = '#06b6d4', pink = '#ec4899', orange = '#f97316';
+const blue50 = 'rgba(59,130,246,0.5)', red50 = 'rgba(239,68,68,0.5)', green50 = 'rgba(34,197,94,0.5)', yellow50 = 'rgba(245,158,11,0.5)';
+
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ===== TAB 1: OVERVIEW =====
+new Chart(document.getElementById('overviewGPA'), {
+  type: 'bar',
+  data: {
+    labels: ['24학번\n24-1학기', '24학번\n24-2학기', '24학번\n25-1학기', '25학번\n25-1학기', '25학번\n25-2학기'],
+    datasets: [
+      { label: '수시', data: [3.14, 3.32, 3.61, 3.35, 3.64], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '정시', data: [3.08, 3.52, 3.72, 3.47, 3.73], backgroundColor: green50, borderColor: green, borderWidth: 1 },
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 2.8, max: 4.0, title: { display: true, text: 'GPA' } } } }
+});
+
+new Chart(document.getElementById('overviewRisk'), {
+  type: 'bar',
+  data: {
+    labels: ['비교과 0회', '상담 0회', '결석 10+회', '학점갭 7+', '기숙사 비거주'],
+    datasets: [{ label: '자퇴율 (24학번)', data: [42.6, 36.88, 17.5, 18.9, 12.0], backgroundColor: [red, orange, yellow, purple, cyan] }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { title: { display: true, text: '자퇴율 (%)' } } } }
+});
+
+new Chart(document.getElementById('overviewAbsence'), {
+  type: 'bar',
+  data: {
+    labels: ['0회', '1~3회', '4~9회', '10회+'],
+    datasets: [{ label: 'GPA', data: [4.21, 3.98, 3.09, 0.99], backgroundColor: [green, blue, yellow, red], borderRadius: 6 }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 4.5, title: { display: true, text: 'GPA' } } } }
+});
+
+new Chart(document.getElementById('overviewExtracurr'), {
+  type: 'bar',
+  data: {
+    labels: ['0회', '1~2회', '3~5회', '6회+'],
+    datasets: [{ label: '자퇴율 (%)', data: [42.6, 8.0, 3.7, 0.0], backgroundColor: [red, orange, yellow, green], borderRadius: 6 }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: '자퇴율 (%)' } } } }
+});
+
+new Chart(document.getElementById('overviewCounseling'), {
+  type: 'bar',
+  data: {
+    labels: ['3~4월\n(조기)', '5~6월', '7~8월\n(후기)', '상담없음'],
+    datasets: [
+      { label: 'GPA (24학번)', data: [3.40, 3.20, 1.06, 1.03], backgroundColor: blue50, borderColor: blue, borderWidth: 1, yAxisID: 'y' },
+      { label: '자퇴율 (%)', data: [7.17, 7.41, 35.71, 36.88], type: 'line', borderColor: red, backgroundColor: red, pointRadius: 5, yAxisID: 'y1' }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { position: 'left', min: 0, max: 4.5, title: { display: true, text: 'GPA' } },
+      y1: { position: 'right', min: 0, max: 40, title: { display: true, text: '자퇴율(%)' }, grid: { drawOnChartArea: false } }
+    }
+  }
+});
+
+// ===== TAB 2: DEMOGRAPHICS =====
+new Chart(document.getElementById('demoGender'), {
+  type: 'bar',
+  data: {
+    labels: ['2024학번', '2025학번'],
+    datasets: [
+      { label: '남학생', data: [50.7, 44.0], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '여학생', data: [49.2, 56.0], backgroundColor: pink + '80', borderColor: pink, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { max: 65, title: { display: true, text: '비율 (%)' } } } }
+});
+
+new Chart(document.getElementById('demoAdmission'), {
+  type: 'bar',
+  data: {
+    labels: ['수시', '정시', '추가모집'],
+    datasets: [
+      { label: '24학번', data: [66.5, 24.0, 5.1], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '25학번', data: [64.2, 29.6, 4.3], backgroundColor: green50, borderColor: green, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: '비율 (%)' } } } }
+});
+
+new Chart(document.getElementById('demoRegion'), {
+  type: 'bar',
+  data: {
+    labels: ['부산', '경남', '경기', '서울', '울산', '인천', '경북', '전남', '제주', '충북'],
+    datasets: [
+      { label: '24학번', data: [29.6, 17.7, 11.5, 8.0, 4.1, 3.4, 2.9, 2.9, 3.7, 3.0], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '25학번', data: [29.0, 16.7, 14.5, 7.9, 4.1, 2.8, 3.4, 3.0, 2.1, 2.2], backgroundColor: green50, borderColor: green, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
+});
+
+new Chart(document.getElementById('demoHighSchool'), {
+  type: 'doughnut',
+  data: {
+    labels: ['일반고', '특성화고', '검정고시', '자율고', '특수목적고', '기타/종합'],
+    datasets: [{ data: [60.5, 11.9, 8.7, 5.6, 5.2, 3.8], backgroundColor: [blue, red, yellow, green, purple, cyan] }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+});
+
+// ===== TAB 3: ACADEMIC =====
+new Chart(document.getElementById('acadAdmGPA24'), {
+  type: 'line',
+  data: {
+    labels: ['24-1학기', '24-2학기', '25-1학기', '25-2학기'],
+    datasets: [
+      { label: '수시', data: [3.14, 3.32, 3.61, 3.57], borderColor: blue, backgroundColor: blue, tension: 0.3, pointRadius: 5 },
+      { label: '정시', data: [3.08, 3.52, 3.72, 3.70], borderColor: green, backgroundColor: green, tension: 0.3, pointRadius: 5 },
+      { label: '추가모집', data: [3.24, 3.36, 3.62, 3.55], borderColor: yellow, backgroundColor: yellow, tension: 0.3, pointRadius: 5 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 2.8, max: 4.0 } } }
+});
+
+new Chart(document.getElementById('acadRegionGPA'), {
+  type: 'bar',
+  data: {
+    labels: ['수도권/강원', '충청/세종', '대구/경북', '부산/울산/경남', '전라도/제주'],
+    datasets: [
+      { label: '25-1학기', data: [3.50, 3.61, 3.59, 3.27, 3.48], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '25-2학기', data: [3.69, 3.77, 3.94, 3.61, 3.67], backgroundColor: green50, borderColor: green, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 3.0, max: 4.2 } } }
+});
+
+new Chart(document.getElementById('acadHSGPA'), {
+  type: 'line',
+  data: {
+    labels: ['24-1학기', '24-2학기', '25-1학기', '25-2학기'],
+    datasets: [
+      { label: '일반고', data: [3.21, 3.39, 3.68, 3.58], borderColor: blue, tension: 0.3, pointRadius: 4 },
+      { label: '특성화고', data: [2.76, 3.11, 3.49, 3.47], borderColor: red, tension: 0.3, pointRadius: 4 },
+      { label: '특수목적고', data: [3.17, 3.53, 3.63, 3.55], borderColor: green, tension: 0.3, pointRadius: 4 },
+      { label: '검정고시', data: [3.25, 3.66, 3.74, 3.93], borderColor: yellow, tension: 0.3, pointRadius: 4 },
+      { label: '자율고', data: [2.77, 3.17, 3.27, 3.45], borderColor: purple, tension: 0.3, pointRadius: 4 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 2.5, max: 4.2 } } }
+});
+
+new Chart(document.getElementById('acadCreditGap'), {
+  type: 'bar',
+  data: {
+    labels: ['0학점\n(미이수없음)', '1~3학점', '4~6학점', '7학점+'],
+    datasets: [
+      { label: '자퇴율 (24학번)', data: [4.0, 4.1, 8.4, 18.9], backgroundColor: red50, borderColor: red, borderWidth: 1, yAxisID: 'y1' },
+      { label: '자퇴율 (25학번)', data: [1.3, 0.6, 2.0, 2.6], type: 'line', borderColor: orange, pointRadius: 5, yAxisID: 'y1' }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y1: { title: { display: true, text: '자퇴율 (%)' } }
+    }
+  }
+});
+
+new Chart(document.getElementById('acadDetailGPA'), {
+  type: 'bar',
+  data: {
+    labels: ['학생부(교과)', '학생부(종합)', '글로벌인재', '특성화고(교과)', '특기자(어학)', '고른기회', '다문화', '정시_일반'],
+    datasets: [
+      { label: '25-1학기', data: [3.34, 3.48, 3.31, 3.32, 3.49, 3.18, 3.88, 3.47], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '25-2학기', data: [3.68, 3.60, 3.60, 3.70, 3.65, 3.84, 3.59, 3.72], backgroundColor: green50, borderColor: green, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 2.8, max: 4.2 } } }
+});
+
+// ===== TAB 4: FACTORS =====
+new Chart(document.getElementById('factAbsence'), {
+  type: 'bar',
+  data: {
+    labels: ['0회', '1~3회', '4~9회', '10회+'],
+    datasets: [{ label: 'GPA', data: [4.21, 3.98, 3.09, 0.99], backgroundColor: [green, '#22d3ee', yellow, red], borderRadius: 6 }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 4.5, title: { display: true, text: 'GPA' } } } }
+});
+
+new Chart(document.getElementById('factDorm'), {
+  type: 'bar',
+  data: {
+    labels: ['24-1학기', '24-2학기', '25-1학기(24)', '25-1학기(25)', '25-2학기(25)'],
+    datasets: [
+      { label: '기숙사 거주', data: [3.49, 3.58, 3.85, 3.74, 3.94], backgroundColor: green50, borderColor: green, borderWidth: 1 },
+      { label: '기숙사 비거주', data: [2.86, 3.31, 3.63, 3.12, 3.60], backgroundColor: red50, borderColor: red, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 2.5, max: 4.2, title: { display: true, text: 'GPA' } } } }
+});
+
+new Chart(document.getElementById('factCounseling'), {
+  type: 'bar',
+  data: {
+    labels: ['0회(미실시)', '1~2회', '3회+'],
+    datasets: [
+      { label: '24학번 24-1학기', data: [1.46, 3.26, 3.55], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '25학번 25-1학기', data: [1.90, 3.56, 3.77], backgroundColor: green50, borderColor: green, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 4.2, title: { display: true, text: 'GPA' } } } }
+});
+
+new Chart(document.getElementById('factCorrelation'), {
+  type: 'radar',
+  data: {
+    labels: ['결석 비중\n(역방향)', '수강 과목수', '비교과 참여', '상담 횟수', '도서대출'],
+    datasets: [
+      { label: '24학번 24-1', data: [0.790, 0.393, 0.418, 0.260, 0.105], borderColor: blue, backgroundColor: blue + '30', pointRadius: 4 },
+      { label: '25학번 25-1', data: [0.843, 0.428, 0.381, 0.265, 0.126], borderColor: green, backgroundColor: green + '30', pointRadius: 4 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { r: { min: 0, max: 1.0, ticks: { stepSize: 0.2 } } } }
+});
+
+new Chart(document.getElementById('factCounselingTime'), {
+  type: 'bar',
+  data: {
+    labels: ['3~4월(조기)', '5~6월', '7~8월(후기)', '상담없음'],
+    datasets: [
+      { label: 'GPA', data: [3.40, 3.20, 1.06, 1.03], backgroundColor: blue50, borderColor: blue, borderWidth: 1, yAxisID: 'y' },
+      { label: '자퇴율(%)', data: [7.17, 7.41, 35.71, 36.88], type: 'line', borderColor: red, pointRadius: 5, yAxisID: 'y1' },
+      { label: '휴학률(%,군제외)', data: [4.47, 7.21, 7.14, 19.38], type: 'line', borderColor: yellow, pointRadius: 5, yAxisID: 'y1', borderDash: [5,5] }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { position: 'left', min: 0, max: 4.5, title: { display: true, text: 'GPA' } },
+      y1: { position: 'right', min: 0, max: 40, title: { display: true, text: '%' }, grid: { drawOnChartArea: false } }
+    }
+  }
+});
+
+new Chart(document.getElementById('factR2'), {
+  type: 'bar',
+  data: {
+    labels: ['24-1학기\nGPA모형', '24-2학기\nGPA모형', '25-1학기(24)\nGPA모형', '25-1학기(25)\nGPA모형', '25-1학기\n학점갭모형'],
+    datasets: [{ label: 'R² (설명력)', data: [0.651, 0.706, 0.639, 0.727, 0.792], backgroundColor: [blue, blue, blue, green, purple], borderRadius: 6 }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 1.0, title: { display: true, text: 'R²' } } } }
+});
+
+// ===== TAB 5: LEAVE =====
+new Chart(document.getElementById('leaveReason'), {
+  type: 'bar',
+  data: {
+    labels: ['개인사정', '병역휴학', '진로변경', '행정연장', '입영대기', '경제사정', '취업준비', '질병'],
+    datasets: [
+      { label: '24학번', data: [22.4, 37.0, 5.2, 5.2, 2.1, 3.6, 2.1, 2.6], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '25학번', data: [38.6, 23.7, 14.5, 8.3, 4.4, 3.1, 3.5, 2.2], backgroundColor: red50, borderColor: red, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false }
+});
+
+new Chart(document.getElementById('leaveTiming'), {
+  type: 'bar',
+  data: {
+    labels: ['1-1학기\n(3~6월)', '1학년 여름\n(7~8월)', '1-2학기\n(9~12월)', '1학년 겨울\n(1~2월)', '2학년+'],
+    datasets: [
+      { label: '24학번', data: [5.7, 45.3, 7.8, 1.6, 19.8], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '25학번', data: [10.5, 71.1, 16.7, 0, 0], backgroundColor: green50, borderColor: green, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: '비율 (%)' } } } }
+});
+
+new Chart(document.getElementById('leaveOR'), {
+  type: 'bar',
+  data: {
+    labels: ['결석비중\n(OR:44.07)', '학기_25-2\n(OR:1.58)', '상담횟수\n(OR:1.34)', '비교과참여\n(OR:0.92)', '평균평점\n(OR:0.77)', '남학생\n(OR:0.65)'],
+    datasets: [{ label: 'Odds Ratio (군휴학 제외)', data: [44.07, 1.58, 1.34, 0.92, 0.77, 0.65], backgroundColor: [red, orange, orange, green, green, green], borderRadius: 4 }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+    plugins: { legend: { display: false }, annotation: {} },
+    scales: { x: { type: 'logarithmic', title: { display: true, text: 'Odds Ratio (log scale)' } } }
+  }
+});
+
+new Chart(document.getElementById('leaveGender'), {
+  type: 'bar',
+  data: {
+    labels: ['24학번', '25학번'],
+    datasets: [
+      { label: '남학생', data: [8.0, 14.8], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '여학생', data: [11.1, 12.6], backgroundColor: pink + '80', borderColor: pink, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: '휴학률 (%)' } } } }
+});
+
+// ===== TAB 6: DROPOUT =====
+new Chart(document.getElementById('dropReason'), {
+  type: 'doughnut',
+  data: {
+    labels: ['타대학 신입학', '수험(편입)준비', '유학', '취업준비', '대학생활부적응', '질병', '기타'],
+    datasets: [{ data: [71, 47, 10, 8, 8, 7, 35], backgroundColor: [red, orange, yellow, green, blue, purple, cyan] }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+});
+
+new Chart(document.getElementById('dropType'), {
+  type: 'pie',
+  data: {
+    labels: ['유형1: 타대학진학 (38.2%)', '유형2: 재수험준비 (29.0%)', '유형3: 학업부진 (4.3%)', '유형4: 기타사유 (28.5%)'],
+    datasets: [{ data: [71, 54, 8, 53], backgroundColor: [red, orange, yellow, blue] }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { size: 10 } } } } }
+});
+
+new Chart(document.getElementById('dropCompare'), {
+  type: 'bar',
+  data: {
+    labels: ['평균평점', '취득학점', '결석비중', '비교과참여', '상담횟수', '도서대출'],
+    datasets: [{
+      label: "Cohen's d (재학 vs 자퇴)",
+      data: [1.23, 1.13, 0.98, 0.54, 0.03, 0.06],
+      backgroundColor: [red, red, orange, yellow, '#334155', '#334155'],
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { y: { title: { display: true, text: "Cohen's d (효과크기)" } } }
+  }
+});
+
+new Chart(document.getElementById('dropExtracurr'), {
+  type: 'bar',
+  data: {
+    labels: ['0회\n(미참여)', '1~2회', '3~5회', '6회+'],
+    datasets: [{
+      label: '자퇴율 (%)',
+      data: [42.6, 8.0, 3.7, 0.0],
+      backgroundColor: [red, orange, yellow, green],
+      borderRadius: 6
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: '자퇴율 (%)' } } } }
+});
+
+new Chart(document.getElementById('dropRegion'), {
+  type: 'bar',
+  data: {
+    labels: ['대전', '충남', '강원', '서울', '인천', '세종', '부산', '경남', '경기', '대구', '충북', '울산', '제주'],
+    datasets: [
+      { label: '24학번', data: [20.7, 19.0, 16.7, 15.5, 14.0, 14.3, 11.3, 11.0, 8.2, 10.0, 10.5, 9.4, 4.3], backgroundColor: red50, borderColor: red, borderWidth: 1 },
+      { label: '25학번', data: [7.4, 4.0, 0, 3.0, 0, 10.0, 4.6, 2.8, 3.8, 8.7, 0, 1.9, 0], backgroundColor: blue50, borderColor: blue, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: '자퇴율 (%)' } } } }
+});
+
+new Chart(document.getElementById('dropTiming'), {
+  type: 'bar',
+  data: {
+    labels: ['24-1(1학기)', '24-2(2학기)', '25-1(3학기)', '25-2(4학기)'],
+    datasets: [{
+      label: '자퇴 인원',
+      data: [50, 65, 55, 16],
+      backgroundColor: [orange, red, orange, yellow],
+      borderRadius: 6
+    }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: '인원 (명)' } } } }
+});
+
+// ===== TAB 7: RETENTION =====
+new Chart(document.getElementById('retentionChart'), {
+  type: 'line',
+  data: {
+    labels: ['입학', '1학기말', '1년차말', '1.5년차', '2년차말\n(편입충격)', '3년차말', '4년차(졸업)'],
+    datasets: [
+      { label: '낙관적 (71.0%)', data: [100, 95.5, 91.2, 86.8, 78.1, 74.2, 71.0], borderColor: green, backgroundColor: green + '20', fill: true, tension: 0.3, pointRadius: 5 },
+      { label: '중립적 (64.1%)', data: [100, 93.5, 87.4, 81.6, 69.5, 64.6, 64.1], borderColor: blue, backgroundColor: blue + '20', fill: true, tension: 0.3, pointRadius: 5 },
+      { label: '비관적 (57.7%)', data: [100, 91.5, 83.7, 76.6, 61.3, 55.8, 57.7], borderColor: red, backgroundColor: red + '20', fill: true, tension: 0.3, pointRadius: 5 }
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      y: { min: 50, max: 105, title: { display: true, text: '재학유지율 (%)' } }
+    },
+    plugins: { legend: { position: 'top' } }
+  }
+});
+
+// ===== TAB 8: COURSES =====
+new Chart(document.getElementById('courseGPA'), {
+  type: 'line',
+  data: {
+    labels: ['2024-1학기', '2024-2학기', '2025-1학기'],
+    datasets: [
+      { label: '세계시민SDGs', data: [3.21, 3.45, 4.04], borderColor: blue, tension: 0.3, pointRadius: 5 },
+      { label: '인공지능의이해와활용', data: [3.28, 3.47, 4.09], borderColor: green, tension: 0.3, pointRadius: 5 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 3.0, max: 4.3, title: { display: true, text: '평균 GPA' } } } }
+});
+
+new Chart(document.getElementById('courseVariance'), {
+  type: 'bar',
+  data: {
+    labels: ['2024-1학기', '2024-2학기', '2025-1학기'],
+    datasets: [
+      { label: '세계시민SDGs', data: [1.98, 1.83, 0.89], backgroundColor: blue50, borderColor: blue, borderWidth: 1 },
+      { label: '인공지능의이해와활용', data: [1.41, 1.33, 1.19], backgroundColor: green50, borderColor: green, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: '분반 간 GPA 범위 (최대-최소)' } } } }
+});
+
+new Chart(document.getElementById('courseNP'), {
+  type: 'bar',
+  data: {
+    labels: ['PSC세미나I\n(24-1)', 'PSC세미나II\n(24-2)', 'PSC세미나I\n(25-1)', '리더십기업\n(24-1)', '리더십기업\n(24-2)', '리더십기업\n(25-1)'],
+    datasets: [{ label: 'NP 비율(%)', data: [14.7, 13.7, 11.9, 28.4, 24.4, 25.9], backgroundColor: [blue, blue, blue, orange, orange, orange], borderRadius: 4 }]
+  },
+  options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { title: { display: true, text: 'NP 비율 (%)' } } } }
+});
+
+new Chart(document.getElementById('courseNPvar'), {
+  type: 'bar',
+  data: {
+    labels: ['PSC세미나I\n(24-1)', 'PSC세미나I\n(25-1)', '리더십기업\n(24-1)', '리더십기업\n(24-2)', '리더십기업\n(25-1)'],
+    datasets: [
+      { label: '최대 NP비율(%)', data: [41.18, 41.18, 50.0, 43.59, 43.75], backgroundColor: red50, borderColor: red, borderWidth: 1 },
+      { label: '최소 NP비율(%)', data: [0, 0, 14.63, 5.08, 8.54], backgroundColor: green50, borderColor: green, borderWidth: 1 }
+    ]
+  },
+  options: { responsive: true, maintainAspectRatio: false, scales: { y: { title: { display: true, text: 'NP 비율 (%)' } } } }
+});
+</script>
+
+</body>
+</html>
